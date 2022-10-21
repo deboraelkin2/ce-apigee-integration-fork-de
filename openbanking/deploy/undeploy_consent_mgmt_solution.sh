@@ -42,18 +42,23 @@ echo "    $CONFIG_FILE_ABS_PATH"
 echo "========================================================================="
 source $CONFIG_FILE_ABS_PATH
 
-
 # Undeploy demo client app
 echo "========================================================================="
 echo "--> Undeploying demo client (Financroo) app ...."
 echo "========================================================================="
- gcloud run services delete ce-demo-client --region=$REGION --project=$PROJECT_ID
+gcloud run services delete ce-demo-client --region=$REGION --project=$PROJECT_ID
+
+# Undeploy consent self service app
+echo "========================================================================="
+echo "--> Undeploying consent self service app ...."
+echo "========================================================================="
+gcloud run services delete ce-consent-self-svc --region=$REGION --project=$PROJECT_ID
 
 # Undeploy consent page app
 echo "========================================================================="
 echo "--> Undeploying consent page app ...."
 echo "========================================================================="
- gcloud run services delete ce-consent-page --region=$REGION --project=$PROJECT_ID
+gcloud run services delete ce-consent-page --region=$REGION --project=$PROJECT_ID
 
 # Delete Cloud secrets
 echo "========================================================================="
