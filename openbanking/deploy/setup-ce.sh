@@ -2,10 +2,16 @@
 
 source deploy/ce_admin.env
 
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        OPT="-w 0"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OPT=""
+fi
+
 function get_token {
-  ACCESS_TOKEN=$(curl -k  --request POST \
+  ACCESS_TOKEN=$(curl -k --http1.1 --request POST \
   --url https://$DOMAIN/$TENANT_ID/admin/oauth2/token \
-  --header "Authorization: Basic `echo -n $CLIENT_ID:$CLIENT_SECRET | base64`" \
+  --header "Authorization: Basic $(echo -n $CLIENT_ID:$CLIENT_SECRET | base64 $OPT)" \
   --header 'Content-Type: application/x-www-form-urlencoded' \
   --data grant_type=client_credentials | jq -r '.access_token')
 }
@@ -545,7 +551,8 @@ function create_client_financroo {
     "response_types": [
         "id_token",
         "code",
-        "token"
+        "token",
+        "code id_token"
     ],
     "scopes": [
         "admin:metadata:update",
@@ -848,7 +855,8 @@ function update_financroo_redirect_url {
     "response_types": [
         "id_token",
         "code",
-        "token"
+        "token",
+        "code id_token"
     ],
     "scopes": [
         "admin:metadata:update",
@@ -1056,21 +1064,25 @@ function setup_workspace {
     CE_ACP_ISSUER_URL="https://$DOMAIN/$TENANT_ID/system"
     echo CE_ACP_ISSUER_URL=$CE_ACP_ISSUER_URL
 
-    sed -i "" "s|CE_ACP_AUTH_SERVER=.*|CE_ACP_AUTH_SERVER=$CE_ACP_AUTH_SERVER|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_APIGEE_CLIENT_ID=.*|CE_ACP_APIGEE_CLIENT_ID=$CE_ACP_APIGEE_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_APIGEE_CLIENT_SECRET=.*|CE_ACP_APIGEE_CLIENT_SECRET=$CE_ACP_APIGEE_CLIENT_SECRET|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_TPP_CLIENT_ID=.*|CE_ACP_TPP_CLIENT_ID=$CE_ACP_TPP_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_CONSENT_SCREEN_CLIENT_ID=.*|CE_ACP_CONSENT_SCREEN_CLIENT_ID=$CE_ACP_CONSENT_SCREEN_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_CONSENT_SCREEN_CLIENT_SECRET=.*|CE_ACP_CONSENT_SCREEN_CLIENT_SECRET=$CE_ACP_CONSENT_SCREEN_CLIENT_SECRET|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|CE_ACP_ISSUER_URL=.*|CE_ACP_ISSUER_URL=$CE_ACP_ISSUER_URL|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_AUTH_SERVER=.*|CE_ACP_AUTH_SERVER=$CE_ACP_AUTH_SERVER|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_APIGEE_CLIENT_ID=.*|CE_ACP_APIGEE_CLIENT_ID=$CE_ACP_APIGEE_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_APIGEE_CLIENT_SECRET=.*|CE_ACP_APIGEE_CLIENT_SECRET=$CE_ACP_APIGEE_CLIENT_SECRET|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_TPP_CLIENT_ID=.*|CE_ACP_TPP_CLIENT_ID=$CE_ACP_TPP_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_CONSENT_SCREEN_CLIENT_ID=.*|CE_ACP_CONSENT_SCREEN_CLIENT_ID=$CE_ACP_CONSENT_SCREEN_CLIENT_ID|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_CONSENT_SCREEN_CLIENT_SECRET=.*|CE_ACP_CONSENT_SCREEN_CLIENT_SECRET=$CE_ACP_CONSENT_SCREEN_CLIENT_SECRET|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|CE_ACP_ISSUER_URL=.*|CE_ACP_ISSUER_URL=$CE_ACP_ISSUER_URL|" deploy/consent_mgmt_solution_config.env
+    rm deploy/consent_mgmt_solution_config.env.bak
 }
 
 function full_deploy {
-    sed -i "" "s|PROJECT_ID=.*|PROJECT_ID=$1|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|REGION=.*|REGION=$2|" deploy/consent_mgmt_solution_config.env
-    sed -i "" "s|APIGEE_X_ENDPOINT=.*|APIGEE_X_ENDPOINT=$3|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak "s|PROJECT_ID=.*|PROJECT_ID=$GCP_PROJECT_ID|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak  "s|REGION=.*|REGION=$GCP_REGION|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak  "s|APIGEE_X_ENDPOINT=.*|APIGEE_X_ENDPOINT=$APIGEE_X_ENDPOINT|" deploy/consent_mgmt_solution_config.env
+    sed -i.bak  "s|APIGEE_X_ENV=.*|APIGEE_X_ENV=$APIGEE_X_ENV|" deploy/consent_mgmt_solution_config.env
+    rm deploy/consent_mgmt_solution_config.env.bak
 
     setup_workspace
+
     source deploy/consent_mgmt_solution_config.env
     source deploy/deploy_consent_mgmt_solution.sh deploy/consent_mgmt_solution_config.env
     source deploy/ce_workspace.env
@@ -1090,9 +1102,9 @@ case $1 in
         get_token
         replace_urls $2 $3
     ;;
-    "full-deploy") # arg1: ApigeeX ProjectID, arg2: ApigeeX region, arg3: ApigeeX host
+    "full-deploy")
        get_token
-       full_deploy $2 $3 $4
+       full_deploy
     ;;
     *)
        echo "unknown argument - requires one of: create-workspace, full-deploy, delete-workspace, replace-urls"
